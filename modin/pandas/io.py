@@ -318,6 +318,22 @@ def read_sql(
         Modin Dataframe
     """
     _, _, _, kwargs = inspect.getargvalues(inspect.currentframe())
+    if chunksize is not None:
+        kwargs["chunksize"] = None
+
+        def query_iterator():
+            offset = 0
+            while True:
+                kwargs["sql"] = "SELECT * FROM ({}) LIMIT {} OFFSET {}".format(sql, chunksize, offset)
+                offset += chunksize
+                df = DataFrame(query_compiler=BaseFactory.read_sql(**kwargs))
+                if df.empty:
+                    break
+                else:
+                    yield df
+
+        return query_iterator()
+
     return DataFrame(query_compiler=BaseFactory.read_sql(**kwargs))
 
 
